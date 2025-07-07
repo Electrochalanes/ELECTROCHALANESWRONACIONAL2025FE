@@ -1,26 +1,20 @@
-Engineering materials
+Material de Ingeniería 
 ====
 
-This repository contains engineering materials of a self-driven vehicle's model participating in the WRO Future Engineers competition in the season 2022.
+Este repositorio contiene el material que se utilizará para el nacional WRO Future Engineers Baja California 2025 y para una posibe participación en la etapa internacional.
 
-## Content
+## Contenido
 
-* `t-photos` contains 2 photos of the team (an official one and one funny photo with all team members)
-* `v-photos` contains 6 photos of the vehicle (from every side, from top and bottom)
-* `video` contains the video.md file with the link to a video where driving demonstration exists
-* `schemes` contains one or several schematic diagrams in form of JPEG, PNG or PDF of the electromechanical components illustrating all the elements (electronic components and motors) used in the vehicle and how they connect to each other.
-* `src` contains code of control software for all components which were programmed to participate in the competition
-* `models` is for the files for models used by 3D printers, laser cutting machines and CNC machines to produce the vehicle elements. If there is nothing to add to this location, the directory can be removed.
-* `other` is for other files which can be used to understand how to prepare the vehicle for the competition. It may include documentation how to connect to a SBC/SBM and upload files there, datasets, hardware specifications, communication protocols descriptions etc. If there is nothing to add to this location, the directory can be removed.
+* `t-photos` Contiene 2 fotos del equipo (una oficial y otra con una pose divertida)
+* `v-photos` Contiene 6 fotos del equipo (desde todas las perspectivas)
+* `video` Contiene un  archivo video.md con el enlace a Youtube para la demostración de movimiento y conducción.
+* `schemes` Contiene uno o más archivos JPEG, PNG or PDF de los componentes electromecánicos (motores y componentes electrónicos) usados en el vehículo y como conectarlos.
+* `src` Contiene los códigos utilizados para que el auto se conduzca en las 2 diferentes categorías de la competencia.
+* `models` Es para los archivos para impresoras 3D, máquinas de core láser para fabricar los elementos del vehículo.
 
-## Introduction
+## Introducción
 
 _This part must be filled by participants with the technical clarifications about the code: which modules the code consists of, how they are related to the electromechanical components of the vehicle, and what is the process to build/compile/upload the code to the vehicle’s controllers._
 
 ## How to prepare the repo based on the template
 
-_Remove this section before the first commit to the repository_
-
-1. Clone this repo by using the `git clone` functionality.
-2. Remove `.git` directory
-3. [Initialize a new public repository on GitHub](https://github.com/new) by following instructions from "create a new repository on the command line" section (appeared after pressing "Create repository" button).
