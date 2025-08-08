@@ -1,0 +1,171 @@
+from gpiozero import DistanceSensor, AngularServo, Motor, Button
+import time
+
+# Configuración de pines
+sensor = DistanceSensor(echo=26, trigger=16, max_distance=3.0)  # HC-SR04
+sensor2 = DistanceSensor(echo=6, trigger=5, max_distance=3.0)
+sensor3 = DistanceSensor(echo=13, trigger=19, max_distance=3.0)
+
+# Configuración mejorada del servo
+servo = AngularServo(
+    18,
+    min_angle=0,
+    max_angle=180,
+    min_pulse_width=0.0005,  # 0.5ms (para 0°)
+    max_pulse_width=0.0025    # 2.5ms (para 180°)
+)
+
+motor = Motor(forward=11, backward=9)
+
+time.sleep(1)
+
+SAMPLE_TIME = 0.05  # Tiempo de muestreo en segundos
+
+# Matriz de configuraciones para cada modo
+config_modos = {
+    'inner': {
+        'velocidad_giro': 0.35,
+        'velocidad_recto': 0.3,
+        'tiempo_giro': 1.8,
+        'rango_setpoint': (60, 80),
+        'condicion_sensor': (160, 100),  # (distancia_max, distancia2_min)
+        'pid': {'Kp': 2.5, 'Ki': 0, 'Kd': 9.5},
+        'sleep': 0
+    },
+    'middle': {
+        'velocidad_giro': 0.4,
+        'velocidad_recto': 0.4,
+        'tiempo_giro': 1.8,
+        'rango_setpoint': (35, 60),
+        'condicion_sensor': (80, 80),
+        'pid': {'Kp': 3, 'Ki': 0, 'Kd': 8},
+        'sleep': 0.5
+    },
+    'outter': {
+        'velocidad_giro': 0.35,
+        'velocidad_recto': 0.4,
+        'tiempo_giro': 1.4,
+        'rango_setpoint': (0, 25),
+        'condicion_sensor': (50, 80),
+        'pid': {'Kp': 5.0, 'Ki': 0.35, 'Kd': 3.2},
+        'sleep': 0.5
+    }
+}
+
+# Variables PID (inicializadas con valores por defecto)
+integral = 0
+previous_error = 0
+previous_time = time.time()
+Kp = 3.2  # Valor por defecto2
+Ki = 0 # Valor por defecto
+Kd = 5.0  # Valor por defecto
+
+boton_inicio = Button(12)
+turn_count = 0
+max_turns = 12
+
+servo.angle = 80.5  # Posición inicial del servo
+
+def ejecutar_modo(modo):
+    global turn_count, Kp, Ki, Kd
+    config = config_modos[modo]
+    distancia_max, distancia2_min = config['condicion_sensor']
+
+    distancia = sensor2.distance * 100
+    distancia2 = sensor3.distance * 100
+
+    if distancia <= distancia_max and distancia2 > distancia2_min:
+        motor.forward(config['velocidad_giro'])
+        servo.angle = 31
+        time.sleep(config['tiempo_giro'])
+        servo.angle = 80.5
+        motor.forward(config['velocidad_recto'])
+        time.sleep(config['sleep'])
+        turn_count += 1
+        time.sleep(1)
+
+        if turn_count == max_turns:
+            if distancia < SETPOINT2:
+                motor.forward(0.4)
+            else:
+                motor.stop()
+
+    # Actualizar parámetros PID según el modo
+    Kp = config['pid']['Kp']
+    Ki = config['pid']['Ki']
+    Kd = config['pid']['Kd']
+
+    return config['velocidad_recto']
+
+# Esperar pulsación del botón
+boton_inicio.wait_for_press()
+SETPOINT = sensor.distance * 100  # Distancia deseada en cm
+SETPOINT2 = sensor2.distance * 100
+time.sleep(1)
+
+try:
+    while turn_count < max_turns:
+        distancia = sensor2.distance * 100
+        distancia2 = sensor3.distance * 100
+
+        # Determinar qué modo ejecutar basado en SETPOINT
+        mfo = 0.25  # Velocidad por defecto
+
+        for modo, config in config_modos.items():
+            min_sp, max_sp = config['rango_setpoint']
+            if min_sp <= SETPOINT <= max_sp:
+                mfo = ejecutar_modo(modo)
+                break
+
+        motor.forward(mfo)
+        current_time = time.time()
+        elapsed = current_time - previous_time
+
+        if elapsed >= SAMPLE_TIME:
+            # Leer distancia (convertir metros a cm)
+            distance = sensor.distance * 100
+            print(f"Distancia: {distance:.1f} cm")
+
+            # Calcular error
+            error = SETPOINT - distance
+
+            # Término Proporcional
+            P = Kp * error
+
+            # Término Integral
+            integral += error * elapsed
+            I = Ki * integral
+
+            # Término Derivativo
+            derivative = (error - previous_error) / elapsed
+            D = Kd * derivative
+
+            # Calcular salida PID
+            pid_output = P + I + D
+
+            # Actualizar valores anteriores
+            previous_error = error
+            previous_time = current_time
+
+            # Calcular ángulo (90° es la posición central)
+            angle = 90 - pid_output
+            angle = max(40, min(140, angle))  # Limitar entre 0-180°
+
+            # Mover servomotor
+            servo.angle = angle
+            print(f"PID: {pid_output:.2f} | Ángulo: {angle:.1f}°")
+            print(f"Distancia sensor2: {distancia:.1f} cm")
+            print(f"Distancia sensor3: {distancia2:.1f} cm")
+            print("-" * 30)
+
+        time.sleep(0.01)
+
+except KeyboardInterrupt:
+    print("\nPrograma terminado")
+
+finally:
+    motor.stop()
+    sensor.close()
+    sensor2.close()
+    sensor3.close()
+    servo.close()
