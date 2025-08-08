@@ -14,7 +14,7 @@ Este repositorio contiene el material que se utilizará para el nacional WRO Fut
 
 ## Introducción
 
-_"Chiquilín" como nos gusta llamarle a nuestro robot, es un vehículo diseñado y desarrollado por nosotros totalmente desde 0. El material utilizado para su creación es muy diverso y se obtuvo de varias fuentes, a continuación podrán observar una lista de este mismo: 
+"Chiquilín" como nos gusta llamarle a nuestro robot, es un vehículo diseñado y desarrollado por nosotros totalmente desde 0. El material utilizado para su creación es muy diverso y se obtuvo de varias fuentes, a continuación podrán observar una lista de este mismo: 
 
 * Filamento PLA para impresora 3D
 * Tablas de madera MDF
@@ -30,6 +30,6 @@ _"Chiquilín" como nos gusta llamarle a nuestro robot, es un vehículo diseñado
 *Pulsador pull down
 *Vara de aluminio
 *Jumpers, cable y alambre de calibre 22
-*Bracket para micromotoreductor Pololu_
+*Bracket para micromotoreductor Pololu
 
 
