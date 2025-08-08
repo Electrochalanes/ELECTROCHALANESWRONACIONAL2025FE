@@ -14,7 +14,21 @@ Este repositorio contiene el material que se utilizará para el nacional WRO Fut
 
 ## Introducción
 
-_This part must be filled by participants with the technical clarifications about the code: which modules the code consists of, how they are related to the electromechanical components of the vehicle, and what is the process to build/compile/upload the code to the vehicle’s controllers._
+_"Chiquilín" como nos gusta llamarle a nuestro robot, es un vehículo diseñado y desarrollado por nosotros totalmente desde 0. El material utilizado para su creación es muy diverso y se obtuvo de varias fuentes, a continuación podrán observar una lista de este mismo: 
+*Filamento PLA para impresora 3D
+*Tablas de madera MDF
+*Raspberry pi 5 16gb
+*Powerbank 3mAh
+*Baterías lipo 7.4V (el amperaje va desde 400mAh)
+*Motorshield SB components para raspberry pi
+*Micromotoreductor Pololu HPCB 6V 50:1 
+*3 sensores ultrasónicos HC-SR04
+*Servomotor con torque de 10 kgf/cm
+*Tornillos y tuercas M5 hexagonales
+*Módulo de cámara USB
+*Pulsador pull down
+*Vara de aluminio
+*Jumpers, cable y alambre de calibre 22
+*Bracket para micromotoreductor Pololu_
 
-## How to prepare the repo based on the template
 
