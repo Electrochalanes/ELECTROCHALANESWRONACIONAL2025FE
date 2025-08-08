@@ -1,7 +1,7 @@
 Material de Ingeniería 
 ====
 
-Este repositorio contiene el material que se utilizará para el nacional WRO Future Engineers Baja California 2025 y para una posibe participación en la etapa internacional.
+Este repositorio contiene el material que se utilizará para el nacional WRO Future Engineers Baja California 2025 y para una posibe participación en la etapa internacional. La explicación de cada uno de los apartados se encuentra en su sección correspondiente.
 
 ## Contenido
 
