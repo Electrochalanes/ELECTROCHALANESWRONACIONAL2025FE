@@ -19,7 +19,7 @@ Este repositorio contiene el material que se utilizará para el nacional WRO Fut
 * Filamento PLA para impresora 3D
 * Tablas de madera MDF
 * Raspberry pi 5 16gb
-* Powerbank 3mAh
+* Powerbank 3000mAh
 * Baterías lipo 7.4V (el amperaje va desde 400mAh)
 * Motorshield SB components para raspberry pi
 * Micromotoreductor Pololu HPCB 6V 50:1 
