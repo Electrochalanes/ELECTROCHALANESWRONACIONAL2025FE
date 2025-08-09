@@ -1,4 +1,4 @@
-Vehicle's photos
+Fotos del Vehículo
 ====
 
-This directory must contain 6 photos of the vehicle (from every side, from top and bottom)
+Fotos del vehiculo desde 6 perspectivas distintas
