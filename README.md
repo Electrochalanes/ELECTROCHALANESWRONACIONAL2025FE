@@ -27,9 +27,9 @@ Este repositorio contiene el material que se utilizará para el nacional WRO Fut
 * Servomotor con torque de 10 kgf/cm
 * Tornillos y tuercas M5 hexagonales
 * Módulo de cámara USB
-*Pulsador pull down
-*Vara de aluminio
-*Jumpers, cable y alambre de calibre 22
-*Bracket para micromotoreductor Pololu
+* Pulsador pull down
+* Vara de aluminio
+* Jumpers, cable y alambre de calibre 22
+* Bracket para micromotoreductor Pololu
 
 
