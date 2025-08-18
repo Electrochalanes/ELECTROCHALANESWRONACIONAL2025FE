@@ -51,10 +51,11 @@ Cada modo tiene parámetros específicos para:
 *Tiempos de espera
 
 ### Inicio con botón
+```
 boton_inicio.wait_for_press()
 SETPOINT = sensor.distance * 100  # Distancia inicial en cm
 SETPOINT2 = sensor2.distance * 100
-
+```
 el robot espera la señal del botón y después establece la distancia inicial como referencia.
 
 ### Bucle principal (se detiene al ejecutarse 12 veces):
