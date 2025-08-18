@@ -32,4 +32,25 @@ Este repositorio contiene el material que se utilizará para el nacional WRO Fut
 * Jumpers, cable y alambre de calibre 22
 * Bracket para micromotoreductor Pololu
 
+## Objetivos el Robot:
+
+# En el desafío abierto:
+* Dar 3 vueltas a la pista y terminar en la sección de arranque
+
+# Complicaciones: 
+* Tiempo limitado
+* Secciones pequeñas
+
+# En el desafío de obstáculos:
+* Detectar obstáculos
+* Esquivar obstáculos
+* Hacer lo anterior mientras conduce
+* Estacionarse en la zona delimitado
+
+# Complicaciones:
+* Tiempo limitado
+* Reducción del espacio gracias a los obstáculos
+* Ajustes de iluminación
+* Ajustes de velocidad
+* Rutina de estacionamiento
 
