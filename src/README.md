@@ -9,31 +9,34 @@ Código para el Desafío Abierto
 ## Modos de Operación
 El robot tiene tres modos configurables que se encuentran dentro de una matriz que decide las configuraciones según el modo:
 
-### 1. Modo Inner (cercano)
-'inner': {
-    'velocidad_giro': 0.35,
-    'velocidad_recto': 0.3,
-    'tiempo_giro': 1.8,
-    'rango_setpoint': (60, 80),  # cm
-    'pid': {'Kp': 2.5, 'Ki': 0, 'Kd': 9.5}
-}
-
-### 2. Modo middle (medio)
-'middle': {
-    'velocidad_giro': 0.4,
-    'velocidad_recto': 0.4,
-    'tiempo_giro': 1.8,
-    'rango_setpoint': (35, 60),  # cm
-    'pid': {'Kp': 3, 'Ki': 0, 'Kd': 8}
-}
-
-### 3. Modo Outter (lejano)
-'outter': {
-    'velocidad_giro': 0.35,
-    'velocidad_recto': 0.4,
-    'tiempo_giro': 1.4,
-    'rango_setpoint': (0, 25),  # cm
-    'pid': {'Kp': 5.0, 'Ki': 0.35, 'Kd': 3.2}
+config_modos = {
+    'inner': {  # Para distancias cercanas
+        'velocidad_giro': 0.35,
+        'velocidad_recto': 0.3,
+        'tiempo_giro': 1.8,
+        'rango_setpoint': (60, 80),
+        'condicion_sensor': (160, 100),
+        'pid': {'Kp': 2.5, 'Ki': 0, 'Kd': 9.5},
+        'sleep': 0
+    },
+    'middle': {  # Para distancias medias
+        'velocidad_giro': 0.4,
+        'velocidad_recto': 0.4,
+        'tiempo_giro': 1.8,
+        'rango_setpoint': (35, 60),
+        'condicion_sensor': (80, 80),
+        'pid': {'Kp': 3, 'Ki': 0, 'Kd': 8},
+        'sleep': 0.5
+    },
+    'outter': {  # Para distancias lejanas
+        'velocidad_giro': 0.35,
+        'velocidad_recto': 0.4,
+        'tiempo_giro': 1.4,
+        'rango_setpoint': (0, 25),
+        'condicion_sensor': (50, 80),
+        'pid': {'Kp': 5.0, 'Ki': 0.35, 'Kd': 3.2},
+        'sleep': 0.5
+    }
 }
 
 Cada modo tiene parámetros específicos para:
