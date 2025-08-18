@@ -9,6 +9,7 @@ Código para el Desafío Abierto
 ## Modos de Operación
 El robot tiene tres modos configurables que se encuentran dentro de una matriz que decide las configuraciones según el modo:
 
+```
 config_modos = {
     'inner': {  # Para distancias cercanas
         'velocidad_giro': 0.35,
@@ -38,6 +39,7 @@ config_modos = {
         'sleep': 0.5
     }
 }
+```
 
 Cada modo tiene parámetros específicos para:
 
@@ -56,6 +58,7 @@ SETPOINT2 = sensor2.distance * 100
 el robot espera la señal del botón y después establece la distancia inicial como referencia.
 
 ### Bucle principal (se detiene al ejecutarse 12 veces):
+```
 while turn_count < max_turns:
     distancia = sensor2.distance * 100
     distancia2 = sensor3.distance * 100
@@ -66,10 +69,11 @@ while turn_count < max_turns:
         if min_sp <= SETPOINT <= max_sp:
             mfo = ejecutar_modo(modo)
             break
+```
 
 ### Función ejecutar_modo()
 Esta función indica cuando debe girar el carro, ajusta los parámetros de PID y se encarga de la condición de finalización.
-
+```
 def ejecutar_modo(modo):
     global turn_count, Kp, Ki, Kd
     config = config_modos[modo]
@@ -97,9 +101,10 @@ def ejecutar_modo(modo):
     Kd = config['pid']['Kd']
     
     return config['velocidad_recto']
-
+```
 ### PID
 Esta función ajusta el ángulo del servomotor para mantener al robot en la distancia indicada
+```
 # Calcular error
 error = SETPOINT - distance
 
