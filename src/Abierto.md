@@ -38,12 +38,12 @@ config_modos = {
 
 Cada modo tiene parámetros específicos para:
 
-*Velocidades en recto y giro
-*Tiempos de giro
-*Rangos de distancia objetivo (setpoint)
-*Condiciones de sensor para detectar esquinas
-*Constantes PID
-*Tiempos de espera
+* Velocidades en recto y giro
+* Tiempos de giro
+* Rangos de distancia objetivo (setpoint)
+* Condiciones de sensor para detectar esquinas
+* Constantes PID
+* Tiempos de espera
 
 ### Inicio con botón
 ```
