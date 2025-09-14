@@ -1,7 +1,12 @@
 from gpiozero import DistanceSensor, AngularServo, Motor, Button
 import time
+from adafruit_vl53l0x import VL53L0X
+import busio
+import board
 
 # Configuración de pines
+i2c = busio.I2C(board.SCL, board.SDA)
+vl53 = VL53L0X(i2c)
 sensor = DistanceSensor(echo=26, trigger=16, max_distance=3.0)  # HC-SR04
 sensor2 = DistanceSensor(echo=6, trigger=5, max_distance=3.0)
 sensor3 = DistanceSensor(echo=13, trigger=19, max_distance=3.0)
@@ -71,7 +76,7 @@ def ejecutar_modo(modo):
     config = config_modos[modo]
     distancia_max, distancia2_min = config['condicion_sensor']
 
-    distancia = sensor2.distance * 100
+    distancia = (vl53.range / 9.5) - 9.5
     distancia2 = sensor3.distance * 100
 
     if distancia <= distancia_max and distancia2 > distancia2_min:
