@@ -49,7 +49,7 @@ Este repositorio contiene el material que se utilizará para el nacional WRO Fut
 
 # Complicaciones:
 * Tiempo limitado
-* Reducción del espacio gracias a los obstáculos
+* Reducción del espacio debido a los obstáculos
 * Ajustes de iluminación
 * Ajustes de velocidad
 * Rutina de estacionamiento
