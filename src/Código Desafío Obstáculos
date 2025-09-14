@@ -1,0 +1,456 @@
+import cv2
+import numpy as np
+from gpiozero import Motor, AngularServo, Button
+from time import sleep
+import board
+import busio
+from adafruit_vl53l0x import VL53L0X
+
+# Hardware configuration
+servo = AngularServo(18, min_angle=-90, max_angle=90,
+                     min_pulse_width=0.5 / 1000, max_pulse_width=2.5 / 1000)
+motor = Motor(forward=11, backward=9)
+i2c = busio.I2C(board.SCL, board.SDA)
+vl53 = VL53L0X(i2c)
+boton = Button(12)
+
+# Camera configuration
+cap = cv2.VideoCapture(0)
+if not cap.isOpened():
+    print("Error: Cannot open camera")
+    exit()
+
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+# HSV color ranges
+COLOR1_LOWER = np.array([67, 140, 88])  # Green
+COLOR1_UPPER = np.array([179, 255, 255])
+
+COLOR2_LOWER = np.array([158, 120, 40])  # Red (low range)
+COLOR2_UPPER = np.array([175, 209, 71])
+COLOR2B_LOWER = np.array([170, 100, 100])  # Red (high range)
+COLOR2B_UPPER = np.array([179, 255, 255])
+
+COLOR3_LOWER = np.array([0, 0, 0])
+COLOR3_UPPER = np.array([0, 0, 0])
+
+# Movement parameters
+last_angle = -9.5  # Initial position
+SMOOTHING_FACTOR = 0.2
+servo.angle = last_angle
+
+# Movement parameters
+velocidad_retroceder = 0.4
+tiempo_retroceder = 0.25
+angulo_vuelta = -45.5
+velocidad_vuelta = 0.4
+tiempo_vuelta = 0.3
+tiempo_salida = 1.3
+tiempo_salida2 = 1.7
+tiempo_entrada = 0.5
+angulo_salida = -61
+
+# Navigation parameters - CONVERTIDOS A CM
+GREEN_EVASION_DISTANCE = 22  # 22cm
+RED_EVASION_DISTANCE = 22  # 22cm
+OBSTACLE_DISTANCE = 23  # 40cm
+PARKING_DISTANCE = 6
+
+# Límites del sensor VL53L0X (en milímetros)
+SENSOR_MIN = 20  # Distancia mínima confiable
+SENSOR_MAX = 2000  # Distancia máxima confiable
+
+# Parámetros de visión reducida con máscara rectangular
+RECTANGLE_WIDTH = 640  # Ancho del rectángulo visible
+RECTANGLE_HEIGHT = 340  # Alto del rectángulo visible
+RECTANGLE_Y_OFFSET = 140  # Desplazamiento hacia abajo (píxeles)
+
+
+# FUNCIONES DE CONSTRAIN AGREGADAS
+def constrain_basic(value, min_val, max_val):
+    """
+    Constrain básico: limita un valor entre mínimo y máximo
+    """
+    return max(min_val, min(value, max_val))
+
+
+def mm_to_cm(distance_mm):
+    """
+    Convierte milímetros a centímetros con ajuste de calibración
+    """
+    return (distance_mm / 9.5) - 8.5
+
+
+def read_constrained_distance_cm():
+    """
+    Lee el sensor, aplica constrain y convierte a cm
+    Retorna la distancia en centímetros limitada al rango válido
+    """
+    try:
+        # Leer sensor (en mm)
+        raw_distance_mm = vl53.range
+
+        # Aplicar constrain (en mm)
+        constrained_distance_mm = constrain_basic(raw_distance_mm, SENSOR_MIN, SENSOR_MAX)
+
+        # Convertir a cm
+        distance_cm = mm_to_cm(constrained_distance_mm)
+
+        # Mostrar información (opcional)
+        if raw_distance_mm != constrained_distance_mm:
+            raw_cm = mm_to_cm(raw_distance_mm)
+            constrained_cm = mm_to_cm(constrained_distance_mm)
+            print(f"CONSTRAIN: {raw_cm:.1f}cm → {constrained_cm:.1f}cm")
+
+        return distance_cm
+
+    except Exception as e:
+        print(f"Error leyendo sensor: {e}")
+        return None
+
+
+def map_value(x, in_min, in_max, out_min, out_max):
+    """Linear mapping with limits (SIN INVERTIR)"""
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
+
+def apply_rectangular_mask(frame, rect_width, rect_height, y_offset):
+    """Aplica una máscara rectangular para limitar la visión, desplazada hacia abajo"""
+    height, width = frame.shape[:2]
+
+    # Calcular coordenadas del rectángulo (centrado horizontalmente, desplazado hacia abajo)
+    x_start = (width - rect_width) // 2
+    y_start = (height - rect_height) // 2 + y_offset  # Desplazamiento hacia abajo
+    x_end = x_start + rect_width
+    y_end = y_start + rect_height
+
+    # Asegurar que las coordenadas estén dentro de los límites de la imagen
+    y_start = max(0, min(y_start, height - 1))
+    y_end = max(0, min(y_end, height - 1))
+    x_start = max(0, min(x_start, width - 1))
+    x_end = max(0, min(x_end, width - 1))
+
+    # Crear máscara rectangular
+    mask = np.zeros((height, width), dtype=np.uint8)
+    cv2.rectangle(mask, (x_start, y_start), (x_end, y_end), 255, -1)
+
+    # Aplicar máscara
+    masked_frame = cv2.bitwise_and(frame, frame, mask=mask)
+
+    # Dibujar el borde del rectángulo para mayor visibilidad
+    cv2.rectangle(masked_frame, (x_start, y_start), (x_end, y_end), (0, 255, 255), 2)
+
+    return masked_frame, (x_start, y_start, x_end, y_end)
+
+
+def detect_color_object(hsv_frame, lower, upper, lower2=None, upper2=None):
+    """Detects objects of a specific color and returns the largest contour"""
+    mask1 = cv2.inRange(hsv_frame, lower, upper)
+
+    if lower2 is not None and upper2 is not None:
+        mask2 = cv2.inRange(hsv_frame, lower2, upper2)
+        mask = cv2.bitwise_or(mask1, mask2)
+    else:
+        mask = mask1
+
+    kernel = np.ones((3, 3), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if contours:
+        largest = max(contours, key=cv2.contourArea)
+        if cv2.contourArea(largest) > 500:
+            return largest
+    return None
+
+
+def execute_initial_sequence():
+    """Executes the initialization sequence"""
+    movements = [
+        (last_angle, 'backward', velocidad_retroceder, tiempo_retroceder),
+        (angulo_vuelta, 'forward', velocidad_vuelta, tiempo_vuelta),
+        (last_angle, 'backward', velocidad_retroceder, tiempo_retroceder),
+        (angulo_vuelta, 'forward', velocidad_vuelta, tiempo_vuelta),
+        (last_angle, 'backward', velocidad_retroceder, tiempo_retroceder),
+        (angulo_vuelta, 'forward', velocidad_vuelta, tiempo_vuelta),
+        (last_angle, 'backward', velocidad_retroceder, tiempo_retroceder),
+        (angulo_vuelta, 'forward', velocidad_vuelta, tiempo_salida),
+        (last_angle, 'backward', velocidad_retroceder, tiempo_entrada),
+        (40, 'forward', velocidad_vuelta, tiempo_salida2),
+        (-50, 'backward', velocidad_retroceder, 0.3),
+        (last_angle, 'backward', velocidad_retroceder, 1.3),
+        (last_angle, None, None, 1)  # Final pause
+    ]
+
+    for angle, direction, speed, duration in movements:
+        servo.angle = angle
+        if direction:
+            getattr(motor, direction)(speed)
+            sleep(duration)
+            motor.stop()
+            sleep(0.5)
+
+
+def evade_green():
+    """Evasion sequence for green objects"""
+    motor.forward(0.4)
+    servo.angle = -49.5
+    sleep(0.9)
+    servo.angle = -9.5
+    sleep(0.6)
+    servo.angle = 30.5
+    motor.forward(0.3)
+    sleep(1)
+    motor.stop()
+    sleep(0.5)
+    servo.angle = -9.5
+    motor.backward(0.2)
+    sleep(1)
+    motor.stop()
+    sleep(0.2)
+
+
+def evade_red():
+    """Evasion sequence for red objects"""
+    motor.forward(0.4)
+    servo.angle = 30.5
+    sleep(0.7)
+    servo.angle = -9.5
+    sleep(0.5)
+    servo.angle = -49.5
+    motor.forward(0.2)
+    sleep(0.8)
+    motor.stop()
+    sleep(0.5)
+    servo.angle = -9.5
+    motor.backward(0.2)
+    sleep(1)
+    motor.stop()
+    sleep(0.2)
+
+
+def avoid_obstacle():
+    """Standard obstacle avoidance"""
+    servo.angle = -50.5
+    motor.forward(0.5)
+    sleep(1.3)
+    motor.stop()
+    sleep(0.5)
+    servo.angle = 20.5
+    motor.backward(0.5)
+    sleep(0.7)
+    motor.stop()
+    sleep(3)
+
+
+def execute_parking_sequence():
+    """Executes the parking sequence"""
+    servo.angle = -9.5
+    sleep(1)
+    servo.angle = angulo_salida
+    motor.backward(velocidad_retroceder)
+    sleep(1.5)
+    motor.stop()
+    sleep(0.5)
+
+    servo.angle = -9.5
+    sleep(0.1)
+    motor.backward(velocidad_retroceder)
+    sleep(0.5)
+    motor.backward(velocidad_retroceder)
+    servo.angle = angulo_vuelta
+    sleep(0.8)
+    motor.stop()
+    sleep(0.5)
+
+    servo.angle = angulo_salida
+    motor.forward(velocidad_retroceder)
+    sleep(0.7)
+    motor.stop()
+    sleep(0.5)
+
+
+# Main program
+try:
+    # Wait for button press and execute initial sequence
+    print("Press button to start...")
+    print(f"Visión rectangular: {RECTANGLE_WIDTH}x{RECTANGLE_HEIGHT}")
+    print(f"Desplazamiento vertical: {RECTANGLE_Y_OFFSET}px hacia abajo")
+    print(f"Límites sensor: {SENSOR_MIN}-{SENSOR_MAX}mm")
+    boton.wait_for_press()
+    sleep(1)
+    execute_initial_sequence()
+
+    # Main loop
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Error: Failed to capture image")
+            break
+
+        # Aplicar máscara rectangular desplazada hacia abajo
+        masked_frame, rect_coords = apply_rectangular_mask(frame, RECTANGLE_WIDTH, RECTANGLE_HEIGHT, RECTANGLE_Y_OFFSET)
+        x_start, y_start, x_end, y_end = rect_coords
+
+        # Measure distance with constrain (cm) - MODIFICADO
+        distancia = read_constrained_distance_cm()
+
+        # Si no hay lectura válida, usar un valor por defecto o saltar
+        if distancia is None:
+            print("Error: No se pudo leer el sensor de distancia")
+            continue
+
+        # Image processing - usar el frame con máscara
+        hsv = cv2.cvtColor(masked_frame, cv2.COLOR_BGR2HSV)
+
+        # Detect both colors
+        color1_obj = detect_color_object(hsv, COLOR1_LOWER, COLOR1_UPPER)
+        color2_obj = detect_color_object(hsv, COLOR2_LOWER, COLOR2_UPPER, COLOR2B_LOWER, COLOR2B_UPPER)
+        color3_obj = detect_color_object(hsv, COLOR3_LOWER, COLOR3_LOWER)
+
+        objeto_detectado = False
+        objeto_detectado2 = False
+        objeto_detectado3 = False
+        target_angle = last_angle  # Maintain last position if no detection
+
+        # Priority: color1 (green) over color2 (red)
+        if color1_obj is not None:
+            objeto_detectado = True
+            M = cv2.moments(color1_obj)
+            cx = int(M["m10"] / (M["m00"] + 1e-5))
+            cy = int(M["m01"] / (M["m00"] + 1e-5))
+
+            offset_x=100
+            cx_verde=cx-offset_x
+
+            # Draw information for color1 (green)
+            cv2.drawContours(masked_frame, [color1_obj], -1, (0, 255, 0), 2)
+            cv2.circle(masked_frame, (cx, cy), 5, (255, 0, 0), -1)
+            cv2.putText(masked_frame, "VERDE", (cx + 15, cy),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+            # Servo control (movimiento normal, sin invertir)
+            target_angle = map_value(cx_verde, 0, 640, -90, 90)
+
+        if color2_obj is not None:
+            objeto_detectado2 = True
+            M = cv2.moments(color2_obj)
+            cx = int(M["m10"] / (M["m00"] + 1e-5))
+            cy = int(M["m01"] / (M["m00"] + 1e-5))
+
+            offset_x=100
+            cx_rojo=cx+offset_x
+
+            # Draw information for color2 (red)
+            cv2.drawContours(masked_frame, [color2_obj], -1, (0, 0, 255), 2)
+            cv2.circle(masked_frame, (cx, cy), 5, (255, 0, 0), -1)
+            cv2.putText(masked_frame, "ROJO", (cx + 15, cy),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+
+            # Only update angle if green not detected (movimiento normal)
+            if not objeto_detectado:
+                target_angle = map_value(cx_rojo, 0, 640, -90, 90)
+
+        if color3_obj is not None:
+            objeto_detectado3 = True
+            M = cv2.moments(color3_obj)
+            cx = int(M["m10"] / (M["m00"] + 1e-5))
+            cy = int(M["m01"] / (M["m00"] + 1e-5))
+
+            cv2.drawContours(masked_frame, [color3_obj], -1, (255, 0, 255), 2)
+            cv2.circle(masked_frame, (cx, cy), 5, (255, 0, 255), -1)
+            cv2.putText(masked_frame, "ESTACIONAMIENTO", (cx+15, cy),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
+
+            target_angle = map_value(cx, 0, 640, -90, 90)
+
+        # Smooth servo movement
+        smoothed_angle = last_angle + SMOOTHING_FACTOR * (target_angle - last_angle)
+        servo.angle = smoothed_angle
+        last_angle = smoothed_angle
+
+        # Movement logic with normal angles - MODIFICADO para usar cm
+        if distancia <= GREEN_EVASION_DISTANCE and objeto_detectado:
+            evade_green()
+        elif distancia <= RED_EVASION_DISTANCE and objeto_detectado2:
+            evade_red()
+        elif distancia <= PARKING_DISTANCE and objeto_detectado3:
+            motor.stop()
+        elif objeto_detectado or objeto_detectado2 or objeto_detectado3:
+            motor.forward(0.25)
+        elif distancia > OBSTACLE_DISTANCE:  # 80cm
+            motor.forward(0.25)
+            servo.angle = -9.5
+        elif distancia < OBSTACLE_DISTANCE:  # 15cm
+            avoid_obstacle()
+
+        # Display information - MODIFICADO para mostrar cm
+        cv2.putText(masked_frame, f"Servo: {last_angle:.1f}°", (20, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+        cv2.putText(masked_frame, f"Dist: {distancia:.1f}cm", (20, 80),  # Cambiado a cm
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        cv2.putText(masked_frame, f"Vision: {RECTANGLE_WIDTH}x{RECTANGLE_HEIGHT}", (20, 120),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        cv2.putText(masked_frame, f"Y Offset: {RECTANGLE_Y_OFFSET}px", (20, 150),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        cv2.putText(masked_frame, "WASD: Size, Up/Down: Position", (20, 180),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        cv2.putText(masked_frame, "+/-: Both dimensions", (20, 210),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+        print(f"Distancia: {distancia:.1f}cm")  # Cambiado a cm
+
+        # Mostrar el frame con máscara rectangular desplazada
+        cv2.imshow("Tracking - Vision Rectangular Inferior", masked_frame)
+
+        # Manejar teclas para ajustar el tamaño y posición del rectángulo
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('q'):
+            break
+        elif key == ord('+'):
+            # Aumentar ambas dimensiones
+            RECTANGLE_WIDTH = min(600, RECTANGLE_WIDTH + 20)
+            RECTANGLE_HEIGHT = min(400, RECTANGLE_HEIGHT + 15)
+            print(f"Rectángulo aumentado: {RECTANGLE_WIDTH}x{RECTANGLE_HEIGHT}")
+        elif key == ord('-'):
+            # Reducir ambas dimensiones
+            RECTANGLE_WIDTH = max(100, RECTANGLE_WIDTH - 20)
+            RECTANGLE_HEIGHT = max(80, RECTANGLE_HEIGHT - 15)
+            print(f"Rectángulo reducido: {RECTANGLE_WIDTH}x{RECTANGLE_HEIGHT}")
+        elif key == ord('w'):
+            # Aumentar altura
+            RECTANGLE_HEIGHT = min(400, RECTANGLE_HEIGHT + 10)
+            print(f"Altura aumentada: {RECTANGLE_HEIGHT}px")
+        elif key == ord('s'):
+            # Reducir altura
+            RECTANGLE_HEIGHT = max(80, RECTANGLE_HEIGHT - 10)
+            print(f"Altura reducida: {RECTANGLE_HEIGHT}px")
+        elif key == ord('a'):
+            # Reducir ancho
+            RECTANGLE_WIDTH = max(100, RECTANGLE_WIDTH - 10)
+            print(f"Ancho reducido: {RECTANGLE_WIDTH}px")
+        elif key == ord('d'):
+            # Aumentar ancho
+            RECTANGLE_WIDTH = min(600, RECTANGLE_WIDTH + 10)
+            print(f"Ancho aumentado: {RECTANGLE_WIDTH}px")
+        elif key == 82:  # Flecha arriba
+            # Mover rectángulo hacia arriba
+            RECTANGLE_Y_OFFSET = max(0, RECTANGLE_Y_OFFSET - 10)
+            print(f"Rectángulo movido hacia arriba: Y Offset = {RECTANGLE_Y_OFFSET}px")
+        elif key == 84:  # Flecha abajo
+            # Mover rectángulo hacia abajo
+            RECTANGLE_Y_OFFSET = min(200, RECTANGLE_Y_OFFSET + 10)
+            print(f"Rectángulo movido hacia abajo: Y Offset = {RECTANGLE_Y_OFFSET}px")
+
+    # Execute parking sequence before exit
+    execute_parking_sequence()
+
+finally:
+    # Cleanup
+    motor.stop()
+    servo.close()
+    cap.release()
+    cv2.destroyAllWindows()
+    print("Program terminated and resources released")
