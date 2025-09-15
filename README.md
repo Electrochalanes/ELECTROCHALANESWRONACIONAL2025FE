@@ -23,7 +23,8 @@ Este repositorio contiene el material que se utilizará para el nacional WRO Fut
 * Baterías lipo 7.4V (el amperaje va desde 400mAh)
 * Motorshield SB components para raspberry pi
 * Micromotoreductor Pololu HPCB 6V 50:1 
-* 3 sensores ultrasónicos HC-SR04
+* 2 sensores ultrasónicos HC-SR04
+* Sensor VL53L0X
 * Servomotor con torque de 10 kgf/cm
 * Tornillos y tuercas M5 hexagonales
 * Módulo de cámara USB
