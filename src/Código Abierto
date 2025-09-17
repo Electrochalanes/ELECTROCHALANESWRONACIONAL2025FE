@@ -8,7 +8,7 @@ import board
 i2c = busio.I2C(board.SCL, board.SDA)
 vl53 = VL53L0X(i2c)
 sensor = DistanceSensor(echo=26, trigger=16, max_distance=3.0)  # HC-SR04
-sensor2 = DistanceSensor(echo=6, trigger=5, max_distance=3.0)
+#sensor2 = DistanceSensor(echo=6, trigger=5, max_distance=3.0)
 sensor3 = DistanceSensor(echo=13, trigger=19, max_distance=3.0)
 
 # Configuración mejorada del servo
@@ -90,10 +90,7 @@ def ejecutar_modo(modo):
         time.sleep(1)
 
         if turn_count == max_turns:
-            if distancia < SETPOINT2:
-                motor.forward(0.4)
-            else:
-                motor.stop()
+            motor.stop()
 
     # Actualizar parámetros PID según el modo
     Kp = config['pid']['Kp']
@@ -105,12 +102,12 @@ def ejecutar_modo(modo):
 # Esperar pulsación del botón
 boton_inicio.wait_for_press()
 SETPOINT = sensor.distance * 100  # Distancia deseada en cm
-SETPOINT2 = sensor2.distance * 100
+#SETPOINT2 = sensor2.distance * 100
 time.sleep(1)
 
 try:
     while turn_count < max_turns:
-        distancia = sensor2.distance * 100
+        #distancia = sensor2.distance * 100
         distancia2 = sensor3.distance * 100
 
         # Determinar qué modo ejecutar basado en SETPOINT
@@ -159,7 +156,7 @@ try:
             # Mover servomotor
             servo.angle = angle
             print(f"PID: {pid_output:.2f} | Ángulo: {angle:.1f}°")
-            print(f"Distancia sensor2: {distancia:.1f} cm")
+            #print(f"Distancia sensor2: {distancia:.1f} cm")
             print(f"Distancia sensor3: {distancia2:.1f} cm")
             print("-" * 30)
 
@@ -171,6 +168,6 @@ except KeyboardInterrupt:
 finally:
     motor.stop()
     sensor.close()
-    sensor2.close()
+    #sensor2.close()
     sensor3.close()
     servo.close()
